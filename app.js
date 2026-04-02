@@ -224,15 +224,29 @@ window.addEventListener('resize', () => {
   if (chart) chart.resize();
 });
 
-// App Entry Point
-setTimeout(() => {
-  if (!window.echarts) {
-    statusEl.textContent = "ECharts 图表库加载失败，请检查网络。";
-    return;
+// App Entry Point - 改进的 ECharts 加载检测
+function waitForECharts(maxAttempts = 10, interval = 300) {
+  let attempts = 0;
+
+  function check() {
+    attempts++;
+    if (window.echarts) {
+      statusEl.textContent = "ECharts 加载完成，正在初始化...";
+      initChart();
+      btnReset.click(); // Initial generation
+    } else if (attempts < maxAttempts) {
+      statusEl.textContent = `正在加载 ECharts 图表库... (${attempts}/${maxAttempts})`;
+      setTimeout(check, interval);
+    } else {
+      statusEl.textContent = "⚠️ ECharts 加载超时，请刷新页面重试。若问题持续，请检查网络连接。";
+      statusEl.style.color = "var(--danger)";
+    }
   }
-  initChart();
-  btnReset.click(); // Initial generation
-}, 500);
+
+  check();
+}
+
+waitForECharts();
 
 // === PM Metrics Integration ===
 (function () {
