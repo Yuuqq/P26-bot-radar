@@ -128,7 +128,7 @@
       "<span class='dk'>时间均匀</span><span class='dv'>" + (node.timeVariance < 0.35 ? "⚠ 可疑" : "正常") + "</span>" +
       "</div>" +
       (node.indicators.length ? "<div style='margin-top:8px;font-size:.8rem'><strong>命中特征：</strong>" + node.indicators.join("、") + "</div>" : "") +
-      "<button type='button' onclick="this.parentElement.style.display='none'" style='margin-top:10px;padding:4px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer'>关闭</button>";
+      "<button type='button' onclick=「this.parentElement.style.display='none'」 style='margin-top:10px;padding:4px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer'>关闭</button>";
   }
 
   function runSimulation() {
@@ -163,8 +163,7 @@
     lastData.nodes.forEach(n => {
       rows.push([n.name, n.botScore, n.regDaysAgo, n.postPerDay, n.timeVariance < 0.35 ? "是" : "否", suspectNodeIds.has(n.id) ? "是" : "否"].join(","));
     });
-    const blob = new Blob(["﻿" + rows.join("
-")], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob(["﻿" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "bot-radar.csv"; a.click();
     URL.revokeObjectURL(url);
