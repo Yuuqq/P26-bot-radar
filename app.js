@@ -1,265 +1,188 @@
-/**
- * P26 协同水军雷达：网络科学重构
- * 实现了基于 ECharts 力导向图的水军拓扑模拟与过滤清洗
- */
+// P26 协同水军雷达 v2.0
+  // 水军评分系统、账号详情面板、CSV导出、ECharts力导向图
 
-const chartContainer = document.getElementById('chartContainer');
-const valNodes = document.getElementById('valNodes');
-const valEdges = document.getElementById('valEdges');
-const statusEl = document.getElementById('status');
+  const chartContainer = document.getElementById("chartContainer");
+  const valNodes = document.getElementById("valNodes");
+  const valEdges = document.getElementById("valEdges");
+  const statusEl = document.getElementById("status");
+  const paramTime = document.getElementById("paramTime");
+  const paramDegree = document.getElementById("paramDegree");
+  const valTimeThresh = document.getElementById("valTimeThresh");
+  const valDegreeThresh = document.getElementById("valDegreeThresh");
+  const btnRunFilter = document.getElementById("btnRunFilter");
+  const btnGenerate = document.getElementById("btnGenerate");
+  const btnExport = document.getElementById("btnExport");
+  const detailPanel = document.getElementById("detailPanel");
 
-const paramTime = document.getElementById('paramTime');
-const paramDegree = document.getElementById('paramDegree');
-const valTimeThresh = document.getElementById('valTimeThresh');
-const valDegreeThresh = document.getElementById('valDegreeThresh');
+  let currentChart = null;
+  let lastData = null;
+  let lastFiltered = null;
 
-const btnRunFilter = document.getElementById('btnRunFilter');
-const btnReset = document.getElementById('btnReset');
+  function setStatus(t) { if (statusEl) statusEl.textContent = "状态: " + t; }
 
-let chart = null;
+  const BOT_INDICATORS = [
+    "注册<7天","无头像","无个人简介","每日发帖>50条",
+    "发帖时间高度均匀","内容复制率>80%","账号互粉率>90%","关键词命中>3个",
+  ];
 
-// Graph Data
-let fullNodes = [];
-let fullEdges = [];
-let currentNodes = [];
-let currentEdges = [];
+  function generateNetwork(nodeCount, edgeMult) {
+    const nodes = [];
+    const edges = [];
+    const botCount = Math.round(nodeCount * 0.35);
 
-const COLOR_NORMAL = '#0f9d58';
-const COLOR_BOT = '#ea4335';
-const COLOR_TARGET = '#a142f4';
+    for (let i = 0; i < nodeCount; i++) {
+      const isBot = i < botCount;
+      const botScore = isBot ? 65 + Math.round(Math.random() * 35) : Math.round(Math.random() * 40);
+      nodes.push({
+        id: i,
+        name: (isBot ? "🤖" : "👤") + " U" + String(i + 1).padStart(3, "0"),
+        isBot: isBot,
+        botScore: botScore,
+        regDaysAgo: isBot ? Math.round(Math.random() * 14) : 100 + Math.round(Math.random() * 900),
+        postPerDay: isBot ? 30 + Math.round(Math.random() * 80) : Math.round(Math.random() * 18),
+        timeVariance: isBot ? (0.1 + Math.random() * 0.25) : (0.5 + Math.random() * 0.5),
+        indicators: BOT_INDICATORS.filter(() => isBot && Math.random() < 0.55),
+      });
+    }
 
-// === 数据生成器 (Mock Dataset Generation) ===
-function generateNetwork() {
-  fullNodes = [];
-  fullEdges = [];
+    const targetEdges = Math.round(nodeCount * edgeMult);
+    const edgeSet = new Set();
+    let attempts = 0;
+    while (edges.length < targetEdges && attempts < targetEdges * 10) {
+      attempts++;
+      let src, tgt;
+      if (Math.random() < 0.55 && botCount > 1) {
+        src = Math.floor(Math.random() * botCount);
+        tgt = Math.floor(Math.random() * botCount);
+      } else {
+        src = Math.floor(Math.random() * nodeCount);
+        tgt = Math.floor(Math.random() * nodeCount);
+      }
+      if (src === tgt) continue;
+      const key = Math.min(src, tgt) + "-" + Math.max(src, tgt);
+      if (edgeSet.has(key)) continue;
+      edgeSet.add(key);
+      edges.push({ source: src, target: tgt, timeDelta: Math.random() * 300 });
+    }
+    return { nodes, edges };
+  }
 
-  // 1. 生成核心攻击目标 (Target Node - id: 0)
-  fullNodes.push({ id: '0', category: 2, name: 'Target_News_Post', symbolSize: 30, itemStyle: { color: COLOR_TARGET }, originalType: 'target' });
+  function filterBots(data, timeThresh, degreeThresh) {
+    const degree = {};
+    data.edges.forEach(e => {
+      degree[e.source] = (degree[e.source] || 0) + 1;
+      degree[e.target] = (degree[e.target] || 0) + 1;
+    });
+    const suspectEdges = data.edges.filter(e => e.timeDelta <= timeThresh);
+    const suspectNodeIds = new Set();
+    suspectEdges.forEach(e => {
+      if ((degree[e.source] || 0) >= degreeThresh) suspectNodeIds.add(e.source);
+      if ((degree[e.target] || 0) >= degreeThresh) suspectNodeIds.add(e.target);
+    });
+    return { suspectNodeIds, suspectEdges, degree };
+  }
 
-  // 2. 生成 50 个普通人类用户 (Normal - ids 1-50)
-  for (let i = 1; i <= 50; i++) {
-    fullNodes.push({
-      id: i.toString(),
-      category: 0,
-      name: `User_${i}`,
-      symbolSize: Math.random() * 10 + 5,
-      itemStyle: { color: COLOR_NORMAL },
-      originalType: 'normal',
-      outDegree: 0
+  function renderChart(data, filtered) {
+    if (!window.echarts || !chartContainer) { setStatus("ECharts 未加载"); return; }
+    if (currentChart) currentChart.dispose();
+    currentChart = window.echarts.init(chartContainer, null, { renderer: "canvas" });
+    const { suspectNodeIds, degree } = filtered;
+    const eNodes = data.nodes.map(n => ({
+      id: n.id, name: n.name,
+      symbolSize: Math.min(40, 10 + (degree[n.id] || 0) * 3),
+      itemStyle: {
+        color: suspectNodeIds.has(n.id) ? "#ef4444" : n.isBot ? "#f97316" : "#3b82f6",
+        borderColor: suspectNodeIds.has(n.id) ? "#7f1d1d" : "#1d4ed8",
+        borderWidth: suspectNodeIds.has(n.id) ? 2 : 0,
+      },
+    }));
+    const eEdges = data.edges.map(e => ({
+      source: e.source, target: e.target,
+      lineStyle: {
+        color: filtered.suspectEdges.includes(e) ? "#ef4444" : "#94a3b8",
+        opacity: filtered.suspectEdges.includes(e) ? 0.8 : 0.3,
+        width: filtered.suspectEdges.includes(e) ? 2 : 1,
+      },
+    }));
+    currentChart.setOption({
+      backgroundColor: "transparent",
+      tooltip: { trigger: "item" },
+      series: [{ type: "graph", layout: "force", data: eNodes, edges: eEdges, roam: true,
+        force: { repulsion: 200, edgeLength: [60, 120] }, label: { show: false },
+        emphasis: { focus: "adjacency" } }],
+    });
+    currentChart.on("click", function(params) {
+      if (params.dataType === "node") showDetail(data.nodes[params.dataIndex], suspectNodeIds.has(data.nodes[params.dataIndex].id));
     });
   }
 
-  // 3. 生成 30 个水军账号 (Bots - ids 51-80)
-  for (let i = 51; i <= 80; i++) {
-    fullNodes.push({
-      id: i.toString(),
-      category: 1,
-      name: `Bot_${i}`,
-      symbolSize: Math.random() * 5 + 8, // Bots tend to look alike
-      itemStyle: { color: COLOR_BOT },
-      originalType: 'bot',
-      outDegree: 0
+  function showDetail(node, isSuspect) {
+    if (!detailPanel) return;
+    detailPanel.style.display = "";
+    detailPanel.innerHTML =
+      "<h3 style='margin:0 0 8px'>" + node.name + (isSuspect ? ' <span style="color:#ef4444">⚠ 疑似水军</span>' : "") + "</h3>" +
+      "<div class='detail-grid'>" +
+      "<span class='dk'>水军评分</span><span class='dv' style='color:" + (node.botScore > 60 ? "#ef4444" : "#16a34a") + "'>" + node.botScore + "%</span>" +
+      "<span class='dk'>注册天前</span><span class='dv'>" + node.regDaysAgo + " 天</span>" +
+      "<span class='dk'>日发帖</span><span class='dv'>" + node.postPerDay + " 条</span>" +
+      "<span class='dk'>时间均匀</span><span class='dv'>" + (node.timeVariance < 0.35 ? "⚠ 可疑" : "正常") + "</span>" +
+      "</div>" +
+      (node.indicators.length ? "<div style='margin-top:8px;font-size:.8rem'><strong>命中特征：</strong>" + node.indicators.join("、") + "</div>" : "") +
+      "<button type='button' onclick="this.parentElement.style.display='none'" style='margin-top:10px;padding:4px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer'>关闭</button>";
+  }
+
+  function runSimulation() {
+    const nodeCount = Math.min(120, Math.max(20, parseInt(valNodes && valNodes.value) || 60));
+    lastData = generateNetwork(nodeCount, 2);
+    if (valEdges) valEdges.textContent = lastData.edges.length;
+    const timeT = parseInt(paramTime && paramTime.value || "60");
+    const degT = parseInt(paramDegree && paramDegree.value || "3");
+    if (valTimeThresh) valTimeThresh.textContent = timeT + "s";
+    if (valDegreeThresh) valDegreeThresh.textContent = degT;
+    lastFiltered = filterBots(lastData, timeT, degT);
+    renderChart(lastData, lastFiltered);
+    const botCount = lastData.nodes.filter(n => n.isBot).length;
+    setStatus("模拟 " + nodeCount + " 账号 · 过滤发现 " + lastFiltered.suspectNodeIds.size + " 可疑节点（实际水军 " + botCount + " 个）");
+  }
+
+  function runFilter() {
+    if (!lastData) { runSimulation(); return; }
+    const timeT = parseInt(paramTime && paramTime.value || "60");
+    const degT = parseInt(paramDegree && paramDegree.value || "3");
+    if (valTimeThresh) valTimeThresh.textContent = timeT + "s";
+    if (valDegreeThresh) valDegreeThresh.textContent = degT;
+    lastFiltered = filterBots(lastData, timeT, degT);
+    renderChart(lastData, lastFiltered);
+    setStatus("过滤完成，发现 " + lastFiltered.suspectNodeIds.size + " 个可疑账号");
+  }
+
+  function exportCsv() {
+    if (!lastData) { setStatus("请先生成网络"); return; }
+    const { suspectNodeIds } = lastFiltered || { suspectNodeIds: new Set() };
+    const rows = ["账号,水军评分,注册天前,日发帖量,时间均匀,是否可疑"];
+    lastData.nodes.forEach(n => {
+      rows.push([n.name, n.botScore, n.regDaysAgo, n.postPerDay, n.timeVariance < 0.35 ? "是" : "否", suspectNodeIds.has(n.id) ? "是" : "否"].join(","));
     });
+    const blob = new Blob(["﻿" + rows.join("
+")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "bot-radar.csv"; a.click();
+    URL.revokeObjectURL(url);
+    setStatus("已导出 CSV");
   }
 
-  // 4. 生成普通用户的边 (Sparse, Random, Normal Time Deltas > 5000ms)
-  for (let i = 1; i <= 50; i++) {
-    // Some normal users interact with the target
-    if (Math.random() > 0.6) {
-      addEdge(i.toString(), '0', 5000 + Math.random() * 50000);
-    }
-    // Normal users interact with each other (small world)
-    for (let j = 1; j <= 50; j++) {
-      if (i !== j && Math.random() > 0.95) {
-        addEdge(i.toString(), j.toString(), 3000 + Math.random() * 10000);
-      }
-    }
-  }
+  if (paramTime) paramTime.addEventListener("input", function() { if (valTimeThresh) valTimeThresh.textContent = paramTime.value + "s"; });
+  if (paramDegree) paramDegree.addEventListener("input", function() { if (valDegreeThresh) valDegreeThresh.textContent = paramDegree.value; });
+  if (btnGenerate) btnGenerate.addEventListener("click", runSimulation);
+  if (btnRunFilter) btnRunFilter.addEventListener("click", runFilter);
+  if (btnExport) btnExport.addEventListener("click", exportCsv);
 
-  // 5. 生成水军的边 (Highly coordinated, Star/Dense topology, low Time Deltas < 500ms)
-  // One or two controller bots (Centrality)
-  const controllers = ['51', '52'];
-  controllers.forEach(ctrl => {
-    fullNodes.find(n => n.id === ctrl).symbolSize = 25; // Controller is big
-  });
-
-  for (let i = 51; i <= 80; i++) {
-    const id = i.toString();
-    // All bots heavily attack the target with highly coordinated time (timeDelta 10-200ms)
-    addEdge(id, '0', 10 + Math.random() * 190);
-
-    // Bots follow orders from controllers
-    if (!controllers.includes(id)) {
-      addEdge(controllers[0], id, 5 + Math.random() * 50); // Controller broadcasts commands
-      // High density among bots
-      for (let j = 51; j <= 80; j++) {
-        if (i !== j && Math.random() > 0.8) {
-          addEdge(id, j.toString(), Math.random() * 300);
-        }
-      }
-    }
-  }
-
-  // 计算初始入出度 (为了过滤)
-  // outDegree 已经在加边时累加
-}
-
-function addEdge(source, target, timeDelta) {
-  fullEdges.push({
-    source,
-    target,
-    timeDelta, // 自定义属性，代表协同时间差
-    lineStyle: { width: timeDelta < 500 ? 1.5 : 0.5, opacity: 0.6 }
-  });
-
-  const sNode = fullNodes.find(n => n.id === source);
-  if (sNode) sNode.outDegree = (sNode.outDegree || 0) + 1;
-}
-
-// === 可视化逻辑 ===
-function initChart() {
-  if (!chart && window.echarts) {
-    chart = window.echarts.init(chartContainer);
-  }
-}
-
-function renderGraph() {
-  if (!chart) return;
-
-  valNodes.textContent = currentNodes.length;
-  valEdges.textContent = currentEdges.length;
-
-  const option = {
-    tooltip: {
-      formatter: function (params) {
-        if (params.dataType === 'node') {
-          return `${params.data.name}<br/>出度/扩散范围: ${params.data.outDegree || 0}`;
-        } else if (params.dataType === 'edge') {
-          return `互动时间差: ${params.data.timeDelta.toFixed(0)} ms`;
-        }
-      }
-    },
-    series: [
-      {
-        type: 'graph',
-        layout: 'force',
-        data: currentNodes,
-        links: currentEdges,
-        roam: true,
-        label: { show: false },
-        force: {
-          repulsion: 100,
-          edgeLength: 30
-        },
-        lineStyle: { color: 'source', curveness: 0.1 }
-      }
-    ]
-  };
-
-  chart.setOption(option);
-}
-
-// === 过滤清洗算法 (The Sandbox Mechanics) ===
-function runFilter() {
-  const timeTolerance = parseInt(paramTime.value);
-  const degreeThreshold = parseInt(paramDegree.value);
-
-  const flaggedEdges = new Set();
-  const flaggedNodes = new Set();
-
-  fullEdges.forEach(e => {
-    if (e.timeDelta < timeTolerance) {
-      flaggedEdges.add(e);
-      if (e.source !== '0') flaggedNodes.add(e.source);
-    }
-  });
-
-  fullNodes.forEach(n => {
-    if (n.id !== '0' && n.outDegree > degreeThreshold) {
-      flaggedNodes.add(n.id);
-    }
-  });
-
-  let removedCount = 0;
-
-  currentNodes = fullNodes.filter(n => {
-    if (flaggedNodes.has(n.id)) {
-      removedCount++;
-      return false;
-    }
-    return true;
-  });
-
-  currentEdges = fullEdges.filter(e => {
-    return !flaggedNodes.has(e.source) && !flaggedNodes.has(e.target);
-  });
-
-  renderGraph();
-
-  if (removedCount > 0) {
-    statusEl.textContent = `⚡ 成功识别并剥离 ${removedCount} 个高度协同的水军节点！`;
-    statusEl.style.color = "var(--danger)";
-  } else {
-    statusEl.textContent = `清洗完成。当前规则下未触发新的水军警报。`;
-    statusEl.style.color = "var(--text-muted)";
-  }
-}
-
-// === Event Listeners ===
-paramTime.addEventListener("input", e => valTimeThresh.textContent = e.target.value);
-paramDegree.addEventListener("input", e => valDegreeThresh.textContent = e.target.value);
-
-btnReset.addEventListener('click', () => {
-  generateNetwork();
-  currentNodes = JSON.parse(JSON.stringify(fullNodes));
-  currentEdges = JSON.parse(JSON.stringify(fullEdges));
-  renderGraph();
-  statusEl.textContent = "关系网已重置 (真实网民 + 未清理的庞大水军群体)";
-  statusEl.style.color = "var(--text-main)";
-});
-
-btnRunFilter.addEventListener('click', runFilter);
-
-window.addEventListener('resize', () => {
-  if (chart) chart.resize();
-});
-
-// App Entry Point - 改进的 ECharts 加载检测
-function waitForECharts(maxAttempts = 10, interval = 300) {
-  let attempts = 0;
-
-  function check() {
-    attempts++;
-    if (window.echarts) {
-      statusEl.textContent = "ECharts 加载完成，正在初始化...";
-      initChart();
-      btnReset.click(); // Initial generation
-    } else if (attempts < maxAttempts) {
-      statusEl.textContent = `正在加载 ECharts 图表库... (${attempts}/${maxAttempts})`;
-      setTimeout(check, interval);
-    } else {
-      statusEl.textContent = "⚠️ ECharts 加载超时，请刷新页面重试。若问题持续，请检查网络连接。";
-      statusEl.style.color = "var(--danger)";
-    }
-  }
-
-  check();
-}
-
-waitForECharts();
-
-// === PM Metrics Integration ===
-(function () {
-  try {
-    if (!window.pmMetrics) return;
-    let taskStarted = false;
-    document.addEventListener('click', function (e) {
-      if (taskStarted) return;
-      const btn = e.target.closest('button, input');
-      if (btn) {
-        taskStarted = true;
-        window.pmMetrics.markTaskStart('bot_network_task');
-      }
-    }, { once: false });
-  } catch (_e) { }
-})();
+  (function() {
+    if (window.echarts) { runSimulation(); return; }
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js";
+    s.onload = function() { runSimulation(); };
+    s.onerror = function() { setStatus("ECharts 加载失败，请检查网络"); };
+    document.head.appendChild(s);
+  })();
+  
