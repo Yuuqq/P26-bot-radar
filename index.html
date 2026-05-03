@@ -1,132 +1,79 @@
 <!doctype html>
-<html lang="zh-CN">
+  <html lang="zh-CN">
+  <head>
+    <meta charset="utf-8"/>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕸️</text></svg>"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>P26 协同水军雷达</title>
+    <link rel="stylesheet" href="../shared/design-tokens.css"/>
+    <link rel="stylesheet" href="./styles.css"/>
+    <meta name="description" content="可视化识别协同水军：力导向图拓扑模拟、时间阈值过滤、账号评分与CSV导出。"/>
+    <link rel="manifest" href="./manifest.json"/>
+  </head>
+  <body>
+    <main aria-label="主内容区域" class="app">
+      <header class="hero">
+        <h1>协同水军雷达</h1>
+        <p>模拟并可视化社交网络中协同水军的拓扑结构，通过时间阈值与度中心性过滤可疑账号。</p>
+      </header>
 
-<head>
-  <meta charset="utf-8" />
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕸️</text></svg>" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>P26 协同水军雷达：图论网络拓扑与介数中心性</title>
-  <link rel="stylesheet" href="../shared/design-tokens.css" />
-  <link rel="stylesheet" href="./styles.css" />
-  <meta name="description" content="基于网络科学(Network Science)的水军雷达，展示结构洞与协同发帖特征图" />
-  <link rel="manifest" href="./manifest.json" />
-
-  <meta property="og:title" content="P26 水军雷达 — 新闻素养工具箱">
-  <meta property="og:description" content="互动式新闻素养教学工具：水军雷达。浏览器打开即用，数据不离开本地。">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://yuuqq.github.io/P26-bot-radar/">
-  <meta name="twitter:card" content="summary">
-  <meta name="description" content="P26 水军雷达 — 50个新闻素养互动教学工具之一">
-<style media="print">
-.gnav,.pedagogy-panel,.explore-section,[class*="dark-toggle"],button[aria-label]{display:none!important}
-body{background:#fff!important;color:#000!important;font-size:11pt}
-.app,main,.container{box-shadow:none!important;border:none!important;padding:0!important}
-a{color:#000!important;text-decoration:underline}
-a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
-@page{margin:2cm}
-</style>
-</head>
-
-<body>
-  <main aria-label="主内容区域" class="app">
-    <header class="hero">
-      <h1>协同水军雷达：图论网络拓扑白盒</h1>
-      <p>
-        真实的水军鉴别不仅看发言内容，更看<strong>网络拓扑特征 (Network Topology)</strong>。
-        高级水军通常表现出极高的协同性（极短的发帖时间差）和异常的图论指标（如高出度、高介数中心性）。
-        在这个沙盘中，你将扮演数据科学家，通过设定图过滤规则，剿灭隐藏在用户关系网中的水军阵列。
-      </p>
-    </header>
-
-    <section class="card"><details class="teach-card" open><summary>🎓 水军检测与舆论操纵</summary><p>社交媒体水军（Bot）通过批量发帖、协调转发等方式影响舆论。检测特征包括：用户名的随机性、发帖频率的规律性、关注/粉丝比，以及转发网络的密集性。本工具模拟多项检测指标。</p></details></section>
-
-    <div class="dashboard">
-      <!-- 拓扑可视化区域 -->
-      <section class="network-panel panel">
-        <div class="network-header">
-          <h2>🌐 社交互动关系网 (Force-Directed Graph)</h2>
-          <div class="legend">
-            <span class="badge normal">🟢 真实网民</span>
-            <span class="badge suspicious">🔴 疑似水军网络</span>
-            <span class="badge target">🟣 舆论攻击目标</span>
-          </div>
-        </div>
-        <div id="chartContainer" class="chart-container">
-          <!-- ECharts will mount here -->
-        </div>
+      <section class="card">
+        <details class="teach-card" open>
+          <summary>🎓 什么是协同水军？如何识别？</summary>
+          <p>协同水军（Coordinated Inauthentic Behavior）指由真实人类或机器账号组成、受统一指挥的信息操控网络。识别信号：①账号注册时间集中；②发帖内容高度一致；③互动时间间隔极短；④账号互粉比例异常高。本工具通过力导向图可视化账号间的协同模式。</p>
+        </details>
       </section>
 
-      <!-- 操作与统计控制台 -->
-      <section class="controls panel">
-        <h2>📊 网络特征提取台</h2>
-
-        <div class="stats-grid">
-          <div class="stat-box">
-            <div class="stat-title">当前活跃节点 (Nodes)</div>
-            <div class="stat-value" id="valNodes">-</div>
+      <div class="main-grid">
+        <section class="card controls-panel">
+          <h2 style="margin:0 0 12px;font-size:1rem">模拟参数</h2>
+          <label>账号数量：<span id="valNodes">60</span></label>
+          <input type="range" id="valNodes" min="20" max="120" value="60"/>
+          <label style="margin-top:10px">边数密度（×节点数）：<span id="valEdges">-</span></label>
+          <div class="btn-row" style="margin-top:12px">
+            <button type="button" id="btnGenerate">🔄 生成网络</button>
+            <button type="button" id="btnExport" class="export-btn">导出 CSV</button>
           </div>
-          <div class="stat-box">
-            <div class="stat-title">互动连接边 (Edges)</div>
-            <div class="stat-value" id="valEdges">-</div>
+          <hr style="margin:14px 0;border:0;border-top:1px solid #eee"/>
+          <h2 style="margin:0 0 12px;font-size:1rem">水军过滤阈值</h2>
+          <label>时间间隔阈值：<span id="valTimeThresh">60s</span></label>
+          <input type="range" id="paramTime" min="10" max="300" value="60" step="10"/>
+          <label style="margin-top:10px">最小度数阈值：<span id="valDegreeThresh">3</span></label>
+          <input type="range" id="paramDegree" min="1" max="10" value="3"/>
+          <button type="button" id="btnRunFilter" style="margin-top:12px">🔍 应用过滤</button>
+
+          <div id="detailPanel" style="display:none;margin-top:14px;padding:12px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca">
+            <!-- 账号详情由 JS 填写 -->
           </div>
-        </div>
+          <p id="status" role="status" aria-live="polite" style="margin-top:10px;font-size:.85rem">状态: 正在加载…</p>
+        </section>
 
-        <div class="metric-explain">
-          <h3>🔬 关键图论指标说明</h3>
-          <ul>
-            <li><strong>出度 (Out-degree)</strong>: 该节点主动发起的互动数。水军往往出度极高。</li>
-            <li><strong>协同时间差 (Time Delta)</strong>: 两个节点对同一目标采取动作的时间差。水军网络常呈秒级并发（< 100ms）。</li>
-            <li><strong>介数中心性 (Betweenness)</strong>: 节点作为其他节点之间最短路径“桥梁”的次数。控制者节点中心性极高。</li>
-          </ul>
-        </div>
-
-        <div class="filter-console">
-          <h3>🧹 编写拓扑清洗规则</h3>
-          <p class="console-desc">调整下方阈值，运行清洗算法，观察水军网络如何解体。</p>
-
-          <div class="filter-group">
-            <label>过滤: 发帖时间差容忍度 (<span id="valTimeThresh">500</span> ms)</label>
-            <input type="range" id="paramTime" min="50" max="2000" step="50" value="500">
-            <div class="help-text">剔除互相之间互动时间间隔极短（高度协同）的相连节点对。</div>
+        <section class="card chart-panel">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;font-size:.8rem">
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:50%;background:#3b82f6;display:inline-block"></span>正常账号</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:50%;background:#f97316;display:inline-block"></span>模拟水军</span>
+            <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:50%;background:#ef4444;display:inline-block"></span>过滤命中</span>
           </div>
+          <div id="chartContainer" style="width:100%;height:480px;border-radius:12px;background:#f8f9fb;border:1px solid #eee"></div>
+          <p style="margin-top:6px;font-size:.75rem;color:#999">点击节点可查看账号详情 · 鼠标滚轮缩放 · 拖拽平移</p>
+        </section>
+      </div>
+    </main>
 
-          <div class="filter-group">
-            <label>过滤: 异常高出度阈值 (> <span id="valDegreeThresh">15</span>)</label>
-            <input type="range" id="paramDegree" min="5" max="30" step="1" value="15">
-            <div class="help-text">剔除疯狂转发、无差别扩散的机器人节点。</div>
-          </div>
-
-          <div class="actions">
-            <button id="btnRunFilter" class="btn primary" aria-label="Run Filter">⚡ 执行图论清洗</button>
-            <button id="btnReset" class="btn secondary outline" aria-label="Reset">🔄 重置网络</button>
-          </div>
-        </div>
-        <p id="status" role="status" aria-live="polite" class="status-msg">状态: 关系网已初始化</p>
-      </section>
-    </div>
-  </main>
-
-  <script src="../shared/vendor/echarts.min.js"></script>
-  <script src="./pm-metrics.js" defer></script>
-  <script src="./app.js" defer></script>
-
-  <!-- Cross-Project Navigation -->
-  <nav aria-label="工具箱导航"
-    style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;font-size:13px;border-top:1px solid #e5e5e5;margin-top:24px;color:#666;">
-    <a href="https://yuuqq.github.io/journalism-toolbox/" style="text-decoration:none;">📋 工具箱导航</a>
-    <span style="opacity:.4">P26</span>
-  </nav>
-  <script src="../shared/dark-toggle.js" defer></script>
-  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}</script>
-  <script src="../shared/cmd-palette.js" defer></script>
-  <script src="../shared/toast.js" defer></script>
-  <script src="../shared/onboarding.js" defer></script>
-
-  <script src="../shared/pedagogy-data-p1.js" defer></script>
-  <script src="../shared/pedagogy-data-p2.js" defer></script>
-  <script src="../shared/global-nav.js" defer></script>
-  <script src="../shared/kbd-hints.js" defer></script>
-</body>
-
-</html>
+    <nav style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;font-size:13px;border-top:1px solid #e5e5e5;margin-top:16px;color:#666;">
+      <a href="https://yuuqq.github.io/journalism-toolbox/" style="text-decoration:none;">📋 工具箱导航</a>
+      <span style="opacity:.4">P26</span>
+    </nav>
+    <script src="./pm-metrics.js" defer></script>
+    <script src="./app.js" defer></script>
+    <script src="../shared/dark-toggle.js" defer></script>
+    <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}</script>
+    <script src="../shared/cmd-palette.js" defer></script>
+    <script src="../shared/toast.js" defer></script>
+    <script src="../shared/onboarding.js" defer></script>
+    <script src="../shared/pedagogy-data-p1.js" defer></script>
+    <script src="../shared/pedagogy-data-p2.js" defer></script>
+    <script src="../shared/global-nav.js" defer></script>
+    <script src="../shared/kbd-hints.js" defer></script>
+  </body>
+  </html>
