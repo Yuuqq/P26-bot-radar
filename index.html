@@ -83,20 +83,20 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
           <p class="console-desc">调整下方阈值，运行清洗算法，观察水军网络如何解体。</p>
 
           <div class="filter-group">
-            <label>过滤: 发帖时间差容忍度 (<span id="valTimeThresh">500</span> ms)</label>
+            <label for="paramTime">过滤: 发帖时间差容忍度 (<span id="valTimeThresh">500</span> ms)</label>
             <input type="range" id="paramTime" min="50" max="2000" step="50" value="500">
             <div class="help-text">剔除互相之间互动时间间隔极短（高度协同）的相连节点对。</div>
           </div>
 
           <div class="filter-group">
-            <label>过滤: 异常高出度阈值 (> <span id="valDegreeThresh">15</span>)</label>
+            <label for="paramDegree">过滤: 异常高出度阈值 (> <span id="valDegreeThresh">15</span>)</label>
             <input type="range" id="paramDegree" min="5" max="30" step="1" value="15">
             <div class="help-text">剔除疯狂转发、无差别扩散的机器人节点。</div>
           </div>
 
           <div class="actions">
-            <button id="btnRunFilter" class="btn primary" aria-label="Run Filter">⚡ 执行图论清洗</button>
-            <button id="btnReset" class="btn secondary outline" aria-label="Reset">🔄 重置网络</button>
+            <button id="btnRunFilter" class="btn primary">⚡ 执行图论清洗</button>
+            <button id="btnReset" class="btn secondary outline">🔄 重置网络</button>
           </div>
         </div>
         <p id="status" role="status" aria-live="polite" class="status-msg">状态: 关系网已初始化</p>
@@ -104,6 +104,7 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
     </div>
   </main>
   <script src="./pm-metrics.js" defer></script>
+<script src="../shared/vendor/echarts.min.js" defer></script>
 <script src="./app.js" defer></script>
 
   <!-- Privacy Notice -->

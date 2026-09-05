@@ -164,12 +164,10 @@ function runFilter() {
   const timeTolerance = parseInt(paramTime.value);
   const degreeThreshold = parseInt(paramDegree.value);
 
-  const flaggedEdges = new Set();
   const flaggedNodes = new Set();
 
   fullEdges.forEach(e => {
     if (e.timeDelta < timeTolerance) {
-      flaggedEdges.add(e);
       if (e.source !== '0') flaggedNodes.add(e.source);
     }
   });
