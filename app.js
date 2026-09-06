@@ -179,7 +179,14 @@
   (function() {
     if (window.echarts) { runSimulation(); return; }
     const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js";
+    s.src = "../shared/vendor/echarts.min.js";
+    s.onerror = function () {
+      var t = document.createElement("script");
+      t.src = "https://yuuqq.github.io/shared/vendor/echarts.min.js";
+      t.onload = function() { runSimulation(); };
+      t.onerror = function() { setStatus("ECharts 加载失败，请检查网络"); };
+      document.head.appendChild(t);
+    };
     s.onload = function() { runSimulation(); };
     s.onerror = function() { setStatus("ECharts 加载失败，请检查网络"); };
     document.head.appendChild(s);
