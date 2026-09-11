@@ -1,7 +1,7 @@
 # P26 Tasks
 
-- [x] 时间解析与分桶
-- [x] 极坐标图
-- [x] 风险评分
+- [x] 网络图结构生成
+- [x] ECharts 力导向图集成
+- [x] 过滤与 CSV 导出
 - [x] README/SPEC/QA
 

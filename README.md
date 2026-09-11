@@ -1,6 +1,6 @@
-# P26 协同水军雷达：图论网络拓扑与介数中心性
+# P26 协同水军雷达：图论网络拓扑与全图度数
 
-> 基于网络科学(Network Science)的水军雷达，展示结构洞与协同发帖特征图
+> 基于网络科学(Network Science)的水军雷达，展示协同发帖特征力导向图
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-c7491f?style=for-the-badge)](https://yuuqq.github.io/P26-bot-radar/)
 [![PWA](https://img.shields.io/badge/PWA-Offline_Ready-4ade80?style=for-the-badge)](#)
