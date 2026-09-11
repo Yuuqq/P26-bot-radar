@@ -3,15 +3,16 @@
 ## 1. Summary
 
 - **Project ID**: P26
-- **Project Name**: 水军/社交机器人特征打分雷达
-- **Goal**: 手动填写账号行为特征，输出机器人可信度雷达图评分
+- **Project Name**: 协同水军雷达
+- **Goal**: 模拟并可视化社交网络中协同水军的拓扑结构，通过时间阈值与度中心性过滤可疑账号
 - **User Persona**: 核查员 / 社交媒体记者
 
 ## 2. Scope
 
 - **In scope**:
-  - 手动填写账号行为特征
-  - 输出机器人可信度雷达图评分
+  - 模拟网络拓扑生成
+  - 可视化账号协同结构
+  - 基于时间和度中心性过滤
 - **Out of scope**:
   - 后端代理或服务端逻辑
   - API Key 持久化存储
@@ -19,15 +20,15 @@
 ## 3. UX
 
 - **Core workflow**: 用户输入 → 前端处理 → 结果展示
-- **Inputs**: 账号行为特征评分
-- **Outputs**: 雷达图 + 综合评分
+- **Inputs**: 账号数量、过滤时间与度数阈值
+- **Outputs**: 力导向图 + 疑似水军列表
 - **States**: empty (初始) / loading (处理中) / error (失败) / success (完成)
 
 ## 4. Functional Requirements
 
-1. FR-1: 手动填写账号行为特征
+1. FR-1: 生成社交网络拓扑
 2. FR-2: 结果可视化展示
-3. FR-3: 错误状态可见提示
+3. FR-3: 根据参数过滤水军并导出
 
 ## 5. Non-Functional Requirements
 
@@ -38,7 +39,7 @@
 
 ## 6. Dependencies
 
-- **Libraries/CDNs**: Chart.js (CDN)
+- **Libraries/CDNs**: ECharts (CDN)
 - **Local data**: 无
 
 ## 7. Risks & Mitigations
@@ -48,9 +49,9 @@
 
 ## 8. Acceptance Criteria
 
-- [ ] 时间戳输入
-- [ ] 24h 分布可视化
-- [ ] 可疑度评分
+- [ ] 节点数量调节
+- [ ] 基于度和时间过滤
+- [ ] 力导向图渲染
 - [ ] 纯静态页面可部署 GitHub Pages
 - [ ] 移动端可用
 - [ ] 隐私提示清晰可见

@@ -1,7 +1,7 @@
 {
-  "name": "P26 协同水军雷达：图论网络拓扑与介数中心性",
+  "name": "P26 协同水军雷达：图论网络拓扑与全图度数",
   "short_name": "P26",
-  "description": "P26 协同水军雷达：图论网络拓扑与介数中心性 — 新闻素养工具",
+  "description": "P26 协同水军雷达：图论网络拓扑与全图度数 — 新闻素养工具",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f0e8",

@@ -3,6 +3,7 @@
 
   const chartContainer = document.getElementById("chartContainer");
   const valNodes = document.getElementById("valNodes");
+  const paramNodes = document.getElementById("paramNodes");
   const valEdges = document.getElementById("valEdges");
   const statusEl = document.getElementById("status");
   const paramTime = document.getElementById("paramTime");
@@ -128,11 +129,11 @@
       "<span class='dk'>时间均匀</span><span class='dv'>" + (node.timeVariance < 0.35 ? "⚠ 可疑" : "正常") + "</span>" +
       "</div>" +
       (node.indicators.length ? "<div style='margin-top:8px;font-size:.8rem'><strong>命中特征：</strong>" + node.indicators.join("、") + "</div>" : "") +
-      "<button type='button' onclick=「this.parentElement.style.display='none'」 style='margin-top:10px;padding:4px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer'>关闭</button>";
+      "<button type='button' onclick=\"this.parentElement.style.display='none'\" style='margin-top:10px;padding:4px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer'>关闭</button>";
   }
 
   function runSimulation() {
-    const nodeCount = Math.min(120, Math.max(20, parseInt(valNodes && valNodes.value) || 60));
+    const nodeCount = Math.min(120, Math.max(20, parseInt(paramNodes && paramNodes.value) || 60));
     lastData = generateNetwork(nodeCount, 2);
     if (valEdges) valEdges.textContent = lastData.edges.length;
     const timeT = parseInt(paramTime && paramTime.value || "60");
@@ -170,6 +171,7 @@
     setStatus("已导出 CSV");
   }
 
+  if (paramNodes) paramNodes.addEventListener("input", function() { if (valNodes) valNodes.textContent = paramNodes.value; });
   if (paramTime) paramTime.addEventListener("input", function() { if (valTimeThresh) valTimeThresh.textContent = paramTime.value + "s"; });
   if (paramDegree) paramDegree.addEventListener("input", function() { if (valDegreeThresh) valDegreeThresh.textContent = paramDegree.value; });
   if (btnGenerate) btnGenerate.addEventListener("click", runSimulation);

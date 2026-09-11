@@ -15,9 +15,9 @@
    - Pass/Fail: **Pass**
 
 ### 已验证项
-  - [x] 时间解析
-  - [x] 极坐标渲染
-  - [x] 评分输出
+  - [x] 网络图生成
+  - [x] 力导向图渲染
+  - [x] 阈值过滤
 
 ## Accessibility Checks
 
