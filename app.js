@@ -24,9 +24,8 @@ let fullEdges = [];
 let currentNodes = [];
 let currentEdges = [];
 
-const COLOR_NORMAL = '#0f9d58';
-const COLOR_BOT = '#ea4335';
-const COLOR_TARGET = '#a142f4';
+const COLOR_NEUTRAL = '#6E5B41';
+const COLOR_TARGET = '#A2402F';
 
 // === 数据生成器 (Mock Dataset Generation) ===
 function generateNetwork() {
@@ -34,30 +33,16 @@ function generateNetwork() {
   fullEdges = [];
 
   // 1. 生成核心攻击目标 (Target Node - id: 0)
-  fullNodes.push({ id: '0', category: 2, name: 'Target_News_Post', symbolSize: 30, itemStyle: { color: COLOR_TARGET }, originalType: 'target' });
+  fullNodes.push({ id: '0', category: 2, name: '目标帖', symbolSize: 30, itemStyle: { color: COLOR_TARGET }, originalType: 'target' });
 
-  // 2. 生成 50 个普通人类用户 (Normal - ids 1-50)
-  for (let i = 1; i <= 50; i++) {
+  for (let i = 1; i <= 80; i++) {
     fullNodes.push({
       id: i.toString(),
-      category: 0,
-      name: `User_${i}`,
-      symbolSize: Math.random() * 10 + 5,
-      itemStyle: { color: COLOR_NORMAL },
-      originalType: 'normal',
-      outDegree: 0
-    });
-  }
-
-  // 3. 生成 30 个水军账号 (Bots - ids 51-80)
-  for (let i = 51; i <= 80; i++) {
-    fullNodes.push({
-      id: i.toString(),
-      category: 1,
-      name: `Bot_${i}`,
-      symbolSize: Math.random() * 5 + 8, // Bots tend to look alike
-      itemStyle: { color: COLOR_BOT },
-      originalType: 'bot',
+      category: i <= 50 ? 0 : 1,
+      name: `账号 ${i}`,
+      symbolSize: 8 + Math.random() * 8,
+      itemStyle: { color: COLOR_NEUTRAL },
+      originalType: i <= 50 ? 'normal' : 'bot',
       outDegree: 0
     });
   }
@@ -75,17 +60,23 @@ function generateNetwork() {
       }
     }
   }
+  for (let i = 1; i <= 5; i += 1) {
+    addEdge(i.toString(), "0", 40 + Math.random() * 80);
+  }
 
   // 5. 生成水军的边 (Highly coordinated, Star/Dense topology, low Time Deltas < 500ms)
   // One or two controller bots (Centrality)
   const controllers = ['51', '52'];
   controllers.forEach(ctrl => {
-    fullNodes.find(n => n.id === ctrl).symbolSize = 25; // Controller is big
+    fullNodes.find(n => n.id === ctrl).symbolSize = 18;
   });
 
   for (let i = 51; i <= 80; i++) {
     const id = i.toString();
-    // All bots heavily attack the target with highly coordinated time (timeDelta 10-200ms)
+    if (i >= 75) {
+      addEdge(id, "0", 4000 + Math.random() * 8000);
+      continue;
+    }
     addEdge(id, '0', 10 + Math.random() * 190);
 
     // Bots follow orders from controllers
@@ -124,10 +115,9 @@ function initChart() {
 }
 
 function renderGraph() {
+  valNodes.textContent = String(currentNodes.length);
+  valEdges.textContent = String(currentEdges.length);
   if (!chart) return;
-
-  valNodes.textContent = currentNodes.length;
-  valEdges.textContent = currentEdges.length;
 
   const option = {
     tooltip: {
@@ -161,8 +151,12 @@ function renderGraph() {
 
 // === 过滤清洗算法 (The Sandbox Mechanics) ===
 function runFilter() {
-  const timeTolerance = parseInt(paramTime.value);
-  const degreeThreshold = parseInt(paramDegree.value);
+  if (!chart) {
+    statusEl.textContent = "图还没准备好，这次没有执行清洗。";
+    return;
+  }
+  const timeTolerance = parseInt(paramTime.value, 10);
+  const degreeThreshold = parseInt(paramDegree.value, 10);
 
   const flaggedNodes = new Set();
 
@@ -178,15 +172,7 @@ function runFilter() {
     }
   });
 
-  let removedCount = 0;
-
-  currentNodes = fullNodes.filter(n => {
-    if (flaggedNodes.has(n.id)) {
-      removedCount++;
-      return false;
-    }
-    return true;
-  });
+  currentNodes = fullNodes.filter(n => !flaggedNodes.has(n.id));
 
   currentEdges = fullEdges.filter(e => {
     return !flaggedNodes.has(e.source) && !flaggedNodes.has(e.target);
@@ -194,13 +180,22 @@ function runFilter() {
 
   renderGraph();
 
-  if (removedCount > 0) {
-    statusEl.textContent = `⚡ 成功识别并剥离 ${removedCount} 个高度协同的水军节点！`;
-    statusEl.style.color = "var(--danger)";
-  } else {
-    statusEl.textContent = `清洗完成。当前规则下未触发新的水军警报。`;
-    statusEl.style.color = "var(--text-muted)";
-  }
+  let hit = 0;
+  let falseAlarm = 0;
+  let missed = 0;
+  fullNodes.forEach((node) => {
+    if (node.originalType === "target") return;
+    const flagged = flaggedNodes.has(node.id);
+    const bot = node.originalType === "bot";
+    if (flagged && bot) hit += 1;
+    else if (flagged) falseAlarm += 1;
+    else if (bot) missed += 1;
+  });
+  const flaggedCount = hit + falseAlarm;
+  const precision = flaggedCount ? hit / flaggedCount : 0;
+  const recall = hit + missed ? hit / (hit + missed) : 0;
+  statusEl.textContent = `合成数据。这条规则标出 ${flaggedCount} 个节点：命中水军 ${hit}，误伤普通账号 ${falseAlarm}，漏掉水军 ${missed}。精确率 ${(precision * 100).toFixed(0)}%，召回率 ${(recall * 100).toFixed(0)}%。`;
+  statusEl.style.color = "var(--ink, var(--text-main))";
 }
 
 // === Event Listeners ===
@@ -212,7 +207,7 @@ btnReset.addEventListener('click', () => {
   currentNodes = JSON.parse(JSON.stringify(fullNodes));
   currentEdges = JSON.parse(JSON.stringify(fullEdges));
   renderGraph();
-  statusEl.textContent = "关系网已重置 (真实网民 + 未清理的庞大水军群体)";
+  statusEl.textContent = "已重新生成合成网络。节点颜色相同，和隐藏标注的对照要等清洗之后。";
   statusEl.style.color = "var(--text-main)";
 });
 
@@ -236,8 +231,10 @@ function waitForECharts(maxAttempts = 10, interval = 300) {
       statusEl.textContent = `正在加载 ECharts 图表库... (${attempts}/${maxAttempts})`;
       setTimeout(check, interval);
     } else {
-      statusEl.textContent = "⚠️ ECharts 加载超时，请刷新页面重试。若问题持续，请检查网络连接。";
+      statusEl.textContent = "图表库没有载入，清洗按钮已停用。请刷新后再试。";
       statusEl.style.color = "var(--danger)";
+      btnRunFilter.disabled = true;
+      btnReset.disabled = true;
     }
   }
 

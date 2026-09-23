@@ -30,9 +30,7 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
     <header class="hero">
       <h1>协同水军雷达：图论网络拓扑白盒</h1>
       <p>
-        真实的水军鉴别不仅看发言内容，更看<strong>网络拓扑特征 (Network Topology)</strong>。
-        高级水军通常表现出极高的协同性（极短的发帖时间差）和异常的图论指标（如高出度、高介数中心性）。
-        在这个沙盘中，你将扮演数据科学家，通过设定图过滤规则，剿灭隐藏在用户关系网中的水军阵列。
+        这是教学沙盘。节点和连线由随机数生成，画面上不会事先标出谁是水军。清洗之后对照的是隐藏标注，用来看规则的命中、误伤和漏报，不是真实检测。
       </p>
     </header>
 
@@ -74,7 +72,7 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
           <ul>
             <li><strong>出度 (Out-degree)</strong>: 该节点主动发起的互动数。水军往往出度极高。</li>
             <li><strong>协同时间差 (Time Delta)</strong>: 两个节点对同一目标采取动作的时间差。水军网络常呈秒级并发（< 100ms）。</li>
-            <li><strong>介数中心性 (Betweenness)</strong>: 节点作为其他节点之间最短路径“桥梁”的次数。控制者节点中心性极高。</li>
+            <li><strong>介数中心性</strong>：本沙盘没有计算这项。下面的规则只用出度和时间差。</li>
           </ul>
         </div>
 
@@ -95,8 +93,8 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
           </div>
 
           <div class="actions">
-            <button id="btnRunFilter" class="btn primary">⚡ 执行图论清洗</button>
-            <button id="btnReset" class="btn secondary outline">🔄 重置网络</button>
+            <button id="btnRunFilter" class="btn primary" type="button">执行清洗</button>
+            <button id="btnReset" class="btn secondary outline" type="button">重置网络</button>
           </div>
         </div>
         <p id="status" role="status" aria-live="polite" class="status-msg">状态: 关系网已初始化</p>
