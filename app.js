@@ -69,18 +69,25 @@
   }
 
   function filterBots(data, timeThresh, degreeThresh) {
+    // Full-graph degree: used only for node sizing in the force layout.
     const degree = {};
     data.edges.forEach(e => {
       degree[e.source] = (degree[e.source] || 0) + 1;
       degree[e.target] = (degree[e.target] || 0) + 1;
     });
+    // Coordinated (time-filtered) subgraph degree: the pedagogically honest filter metric.
     const suspectEdges = data.edges.filter(e => e.timeDelta <= timeThresh);
-    const suspectNodeIds = new Set();
+    const coordDegree = {};
     suspectEdges.forEach(e => {
-      if ((degree[e.source] || 0) >= degreeThresh) suspectNodeIds.add(e.source);
-      if ((degree[e.target] || 0) >= degreeThresh) suspectNodeIds.add(e.target);
+      coordDegree[e.source] = (coordDegree[e.source] || 0) + 1;
+      coordDegree[e.target] = (coordDegree[e.target] || 0) + 1;
     });
-    return { suspectNodeIds, suspectEdges, degree };
+    const suspectNodeIds = new Set();
+    Object.keys(coordDegree).forEach(idStr => {
+      const id = Number(idStr);
+      if ((coordDegree[id] || 0) >= degreeThresh) suspectNodeIds.add(id);
+    });
+    return { suspectNodeIds, suspectEdges, degree, coordDegree };
   }
 
   function renderChart(data, filtered) {
@@ -88,6 +95,7 @@
     if (currentChart) currentChart.dispose();
     currentChart = window.echarts.init(chartContainer, null, { renderer: "canvas" });
     const { suspectNodeIds, degree } = filtered;
+    const suspectEdgeSet = new Set(filtered.suspectEdges);
     const eNodes = data.nodes.map(n => ({
       id: n.id, name: n.name,
       symbolSize: Math.min(40, 10 + (degree[n.id] || 0) * 3),
@@ -100,9 +108,9 @@
     const eEdges = data.edges.map(e => ({
       source: e.source, target: e.target,
       lineStyle: {
-        color: filtered.suspectEdges.includes(e) ? "#ef4444" : "#94a3b8",
-        opacity: filtered.suspectEdges.includes(e) ? 0.8 : 0.3,
-        width: filtered.suspectEdges.includes(e) ? 2 : 1,
+        color: suspectEdgeSet.has(e) ? "#ef4444" : "#94a3b8",
+        opacity: suspectEdgeSet.has(e) ? 0.8 : 0.3,
+        width: suspectEdgeSet.has(e) ? 2 : 1,
       },
     }));
     currentChart.setOption({
@@ -119,23 +127,65 @@
 
   function showDetail(node, isSuspect) {
     if (!detailPanel) return;
-    detailPanel.style.display = "";
-    detailPanel.innerHTML =
-      "<h3 style='margin:0 0 8px'>" + node.name + (isSuspect ? ' <span style="color:#ef4444">⚠ 疑似水军</span>' : "") + "</h3>" +
-      "<div class='detail-grid'>" +
-      "<span class='dk'>水军评分</span><span class='dv' style='color:" + (node.botScore > 60 ? "#ef4444" : "#16a34a") + "'>" + node.botScore + "%</span>" +
-      "<span class='dk'>注册天前</span><span class='dv'>" + node.regDaysAgo + " 天</span>" +
-      "<span class='dk'>日发帖</span><span class='dv'>" + node.postPerDay + " 条</span>" +
-      "<span class='dk'>时间均匀</span><span class='dv'>" + (node.timeVariance < 0.35 ? "⚠ 可疑" : "正常") + "</span>" +
-      "</div>" +
-      (node.indicators.length ? "<div style='margin-top:8px;font-size:.8rem'><strong>命中特征：</strong>" + node.indicators.join("、") + "</div>" : "") +
-      "<button type='button' onclick=\"this.parentElement.style.display='none'\" style='margin-top:10px;padding:4px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer'>关闭</button>";
+    detailPanel.hidden = false;
+    detailPanel.replaceChildren();
+
+    const title = document.createElement("h3");
+    title.style.margin = "0 0 8px";
+    title.textContent = node.name + (isSuspect ? " " : "");
+    if (isSuspect) {
+      const flag = document.createElement("span");
+      flag.style.color = "#ef4444";
+      flag.textContent = "⚠ 疑似水军";
+      title.appendChild(document.createTextNode(" "));
+      title.appendChild(flag);
+    }
+    detailPanel.appendChild(title);
+
+    const grid = document.createElement("div");
+    grid.className = "detail-grid";
+    const rows = [
+      ["水军评分", node.botScore + "%", node.botScore > 60 ? "#ef4444" : "#16a34a"],
+      ["注册天前", node.regDaysAgo + " 天", null],
+      ["日发帖", node.postPerDay + " 条", null],
+      ["时间均匀", node.timeVariance < 0.35 ? "⚠ 可疑" : "正常", null],
+    ];
+    rows.forEach(function(row) {
+      const dk = document.createElement("span");
+      dk.className = "dk";
+      dk.textContent = row[0];
+      const dv = document.createElement("span");
+      dv.className = "dv";
+      dv.textContent = row[1];
+      if (row[2]) dv.style.color = row[2];
+      grid.appendChild(dk);
+      grid.appendChild(dv);
+    });
+    detailPanel.appendChild(grid);
+
+    if (node.indicators.length) {
+      const ind = document.createElement("div");
+      ind.style.marginTop = "8px";
+      ind.style.fontSize = ".8rem";
+      const strong = document.createElement("strong");
+      strong.textContent = "命中特征：";
+      ind.appendChild(strong);
+      ind.appendChild(document.createTextNode(node.indicators.join("、")));
+      detailPanel.appendChild(ind);
+    }
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "detail-close";
+    closeBtn.textContent = "关闭";
+    closeBtn.addEventListener("click", function() { detailPanel.hidden = true; });
+    detailPanel.appendChild(closeBtn);
   }
 
   function runSimulation() {
     const nodeCount = Math.min(120, Math.max(20, parseInt(paramNodes && paramNodes.value) || 60));
     lastData = generateNetwork(nodeCount, 2);
-    if (valEdges) valEdges.textContent = lastData.edges.length;
+    if (valEdges) valEdges.textContent = String(lastData.edges.length) + "（密度×2，只读）";
     const timeT = parseInt(paramTime && paramTime.value || "60");
     const degT = parseInt(paramDegree && paramDegree.value || "3");
     if (valTimeThresh) valTimeThresh.textContent = timeT + "s";
@@ -178,12 +228,17 @@
   if (btnRunFilter) btnRunFilter.addEventListener("click", runFilter);
   if (btnExport) btnExport.addEventListener("click", exportCsv);
 
+  window.addEventListener("resize", function() {
+    if (currentChart) currentChart.resize();
+  });
+
   (function() {
     if (window.echarts) { runSimulation(); return; }
     const s = document.createElement("script");
+    // Ownership note: classroom vendor fallback + pin lives in open PR #1 (fix/classroom-cold-start).
+    // This branch intentionally keeps the existing jsDelivr path to avoid a merge conflict with that PR.
     s.src = "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js";
     s.onload = function() { runSimulation(); };
     s.onerror = function() { setStatus("ECharts 加载失败，请检查网络"); };
     document.head.appendChild(s);
   })();
-  
