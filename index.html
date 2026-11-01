@@ -2,31 +2,60 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📰</text></svg>" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#F0E6CF" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#241B11" media="(prefers-color-scheme: dark)" />
+  <meta name="color-scheme" content="light dark" />
   <title>P26 协同水军雷达：图论网络拓扑与介数中心性</title>
   <link rel="stylesheet" href="../shared/design-tokens.css" />
-<link rel="stylesheet" href="./modern-styles.css" />
-<link rel="stylesheet" href="./styles.css" />
-<meta name="description" content="基于网络科学(Network Science)的水军雷达，展示结构洞与协同发帖特征图" />
+  <link rel="stylesheet" href="../shared/modern-styles.css" />
+  <link rel="stylesheet" href="../shared/tool-chrome.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <meta name="description" content="基于网络科学(Network Science)的水军雷达，展示结构洞与协同发帖特征图" />
   <link rel="manifest" href="./manifest.json" />
 
-  <meta property="og:title" content="P26 水军雷达 — 新闻素养工具箱">
-  <meta property="og:description" content="互动式新闻素养教学工具：水军雷达。浏览器打开即用，数据不离开本地。">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://yuuqq.github.io/P26-bot-radar/">
-    <style media="print">
-.gnav,.pedagogy-panel,.explore-section,[class*="dark-toggle"],button[aria-label]{display:none!important}
-body{background:#fff!important;color:#000!important;font-size:11pt}
-.app,main,.container{box-shadow:none!important;border:none!important;padding:0!important}
-a{color:#000!important;text-decoration:underline}
-a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
-@page{margin:2cm}
-</style>
+  <meta property="og:title" content="P26 水军雷达 — 新闻素养工具箱" />
+  <meta property="og:description" content="互动式新闻素养教学工具：水军雷达。浏览器打开即用，数据不离开本地。" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://yuuqq.github.io/P26-bot-radar/" />
+  <style media="print">
+    .gnav, .gnav-fab, .gnav-overlay, .pedagogy-panel, .explore-section, [class*="dark-toggle"], .flow-guide {
+      display: none !important;
+    }
+    body {
+      background: var(--print-paper) !important;
+      color: var(--print-ink) !important;
+      font-size: 11pt;
+    }
+    .app, main, .container {
+      box-shadow: none !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+    a { color: var(--print-ink) !important; text-decoration: underline; }
+    a[href]::after {
+      content: " (" attr(href) ")";
+      font-size: 9pt;
+      color: color-mix(in srgb, var(--print-ink) 70%, var(--print-paper));
+    }
+    @page { margin: 2cm; }
+  </style>
 </head>
 
 <body>
   <main aria-label="主内容区域" class="app">
+    <header class="tool-chrome" data-tool-id="P26">
+      <a class="tool-chrome__mark" href="../P00-dashboard/">新闻实验工具</a>
+      <span class="tool-chrome__id">P26</span>
+    </header>
+
+    <details class="tool-teach">
+      <summary>如何使用</summary>
+      <p>社交媒体水军（Bot）通过批量发帖、协调转发等方式影响舆论。检测特征包括：用户名的随机性、发帖频率的规律性、关注/粉丝比，以及转发网络的密集性。本工具模拟多项检测指标。</p>
+      <p>画面上的节点和连线由随机数生成，不会事先标出谁是水军。拖动发帖时间差和出度阈值，再点「执行清洗」。状态行对照隐藏标注，给出命中、误伤和漏报，用来看规则，不是真实检测。</p>
+    </details>
+
     <header class="hero">
       <h1>协同水军雷达：图论网络拓扑白盒</h1>
       <p>
@@ -34,17 +63,15 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
       </p>
     </header>
 
-    <section class="card"><details class="teach-card" open><summary>🎓 水军检测与舆论操纵</summary><p>社交媒体水军（Bot）通过批量发帖、协调转发等方式影响舆论。检测特征包括：用户名的随机性、发帖频率的规律性、关注/粉丝比，以及转发网络的密集性。本工具模拟多项检测指标。</p></details></section>
-
     <div class="dashboard">
       <!-- 拓扑可视化区域 -->
       <section class="network-panel panel">
         <div class="network-header">
-          <h2>🌐 社交互动关系网 (Force-Directed Graph)</h2>
+          <h2>社交互动关系网 (Force-Directed Graph)</h2>
           <div class="legend">
-            <span class="badge normal">🟢 真实网民</span>
-            <span class="badge suspicious">🔴 疑似水军网络</span>
-            <span class="badge target">🟣 舆论攻击目标</span>
+            <span class="badge normal">真实网民</span>
+            <span class="badge suspicious">疑似水军网络</span>
+            <span class="badge target">舆论攻击目标</span>
           </div>
         </div>
         <div id="chartContainer" class="chart-container">
@@ -54,7 +81,7 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
 
       <!-- 操作与统计控制台 -->
       <section class="controls panel">
-        <h2>📊 网络特征提取台</h2>
+        <h2>网络特征提取台</h2>
 
         <div class="stats-grid">
           <div class="stat-box">
@@ -68,7 +95,7 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
         </div>
 
         <div class="metric-explain">
-          <h3>🔬 关键图论指标说明</h3>
+          <h3>关键图论指标说明</h3>
           <ul>
             <li><strong>出度 (Out-degree)</strong>: 该节点主动发起的互动数。水军往往出度极高。</li>
             <li><strong>协同时间差 (Time Delta)</strong>: 两个节点对同一目标采取动作的时间差。水军网络常呈秒级并发（< 100ms）。</li>
@@ -77,7 +104,7 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
         </div>
 
         <div class="filter-console">
-          <h3>🧹 编写拓扑清洗规则</h3>
+          <h3>编写拓扑清洗规则</h3>
           <p class="console-desc">调整下方阈值，运行清洗算法，观察水军网络如何解体。</p>
 
           <div class="filter-group">
@@ -100,31 +127,38 @@ a[href]::after{content:" (" attr(href) ")";font-size:9pt;color:#666}
         <p id="status" role="status" aria-live="polite" class="status-msg">状态: 关系网已初始化</p>
       </section>
     </div>
+
+    <footer class="tool-footer">
+      数据边界以附录 A 为准：能在本机完成的计算不主动外发；示例数据仅供课堂；本工具输出不得单独当作结论。
+      <a href="../P00-dashboard/">返回工具箱</a>
+    </footer>
   </main>
   <script src="./pm-metrics.js" defer></script>
-<script src="../shared/vendor/echarts.min.js" defer></script>
-<script src="./app.js" defer></script>
-
-  <!-- Privacy Notice -->
-  <div style="text-align:center;padding:12px 16px;font-size:12px;color:#888;border-top:1px solid #eee;margin-top:24px;">
-    🔒 隐私提示：本工具所有数据处理均在您的浏览器本地完成，不会上传任何数据至服务器。
-  </div>
-
-  <!-- Cross-Project Navigation -->
-  <nav aria-label="工具箱导航" style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;font-size:13px;border-top:1px solid #e5e5e5;margin-top:16px;color:#666;">
-    <a href="https://yuuqq.github.io/journalism-toolbox/" style="text-decoration:none;">📋 工具箱导航</a>
-    <span style="opacity:.4">P26</span>
-  </nav>
-
-<script src="../shared/dark-toggle.js" defer></script>
-<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}</script>
-<script src="../shared/cmd-palette.js" defer></script>
-<script src="../shared/toast.js" defer></script>
-<script src="../shared/onboarding.js" defer></script>
-<script src="../shared/pedagogy-data-p1.js" defer></script>
-<script src="../shared/pedagogy-data-p2.js" defer></script>
-<script src="../shared/global-nav.js" defer></script>
-<script src="../shared/kbd-hints.js" defer></script>
+  <script src="../shared/vendor/echarts.min.js" defer></script>
+  <script src="./app.js" defer></script>
+  <script src="../shared/dark-toggle.js" defer></script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{})}</script>
+  <script src="../shared/cmd-palette.js" defer></script>
+  <script src="../shared/toast.js" defer></script>
+  <script src="../shared/onboarding.js" defer></script>
+  <script src="../shared/pedagogy-data-p1.js" defer></script>
+  <script src="../shared/pedagogy-data-p2.js" defer></script>
+  <script src="../shared/global-nav.js" defer></script>
+  <script src="../shared/kbd-hints.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      setTimeout(function () {
+        var footer = document.querySelector(".tool-footer");
+        if (!footer) return;
+        var flow = document.querySelector(".flow-guide");
+        if (flow) {
+          flow.open = false;
+          footer.insertAdjacentElement("afterend", flow);
+        }
+        var panel = document.querySelector(".pedagogy-panel");
+        if (panel) footer.insertAdjacentElement("afterend", panel);
+      }, 0);
+    });
+  </script>
 </body>
-
 </html>
